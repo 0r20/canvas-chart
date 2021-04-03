@@ -1,5 +1,6 @@
 import { isOver, toDate, circle, computeBoundaries, line, toCoords, css } from './utils'
 import { tooltip } from './tooltip'
+import { sliderChart } from './slider'
 
 const WIDTH = 600
 const HEIGHT = 200
@@ -14,9 +15,10 @@ const CIRCLE_RADIUS = 8
 
 export function chart(root, data) {
 
-	const canvas = root.querySelector('canvas')
-	const ctx = canvas.getContext('2d');
+	const canvas = root.querySelector('[data-el="main"]')
 	const tip = tooltip(root.querySelector('[data-el="tooltip"]'))
+	const slider = sliderChart(root.querySelector('[data-el="slider"]'), data, DPI_WIDTH)
+	const ctx = canvas.getContext('2d');
 	let frame
 
 	canvas.width = DPI_WIDTH
@@ -32,6 +34,10 @@ export function chart(root, data) {
 			frame = requestAnimationFrame(paint)
 			return result
 		}
+	})
+
+	slider.subscribe((pos) => {
+		console.log(pos)
 	})
 
 	canvas.addEventListener('mousemove', mousemove)
