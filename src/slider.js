@@ -1,7 +1,9 @@
-import { css, computeBoundaries, toCoords, line } from './utils'
+import { css, computeBoundaries, toCoords, line, computeYRatio, computeXRatio } from './utils'
 
 const HEIGHT = 40
 const DPI_HEIGHT = HEIGHT * 2
+
+function noop() { }
 
 export function sliderChart(root, data, DPI_WIDTH) {
 	const WIDTH = DPI_WIDTH / 2
@@ -12,6 +14,8 @@ export function sliderChart(root, data, DPI_WIDTH) {
 	const $window = root.querySelector('[data-el="window"]')
 	const $right = root.querySelector('[data-el="right"]')
 
+	let nextFn = noop
+
 	const ctx = canvas.getContext('2d');
 	canvas.width = DPI_WIDTH
 	canvas.height = DPI_HEIGHT
@@ -19,6 +23,10 @@ export function sliderChart(root, data, DPI_WIDTH) {
 		width: WIDTH + 'px',
 		height: HEIGHT + 'px'
 	})
+
+	function next(fn) {
+		nextFn(getPosition())
+	}
 
 	function mousedown(event) {
 		const type = event.target.dataset.type
@@ -38,6 +46,7 @@ export function sliderChart(root, data, DPI_WIDTH) {
 				const right = WIDTH - dimensions.width - left
 
 				setPosition(left, right)
+				next()
 			}
 		}
 		if (type === 'left' || type === 'right') {
@@ -57,6 +66,7 @@ export function sliderChart(root, data, DPI_WIDTH) {
 					const right = WIDTH - dimensions.left - (dimensions.width - delta)
 					setPosition(dimensions.left, right)
 				}
+				next()
 			}
 		}
 
@@ -113,18 +123,20 @@ export function sliderChart(root, data, DPI_WIDTH) {
 	const { min: yMin, max: yMax } = computeBoundaries(data)
 	const xMax = data.columns[0].length
 
-	const yRatio = DPI_HEIGHT / (yMax - yMin)
-	const xRatio = DPI_WIDTH / (xMax - 2)
+	const yRatio = computeYRatio(DPI_HEIGHT, yMax, yMin)
+	const xRatio = computeXRatio(DPI_WIDTH, xMax)
 
 	const yData = data.columns.filter(col => data.types[col[0]] === 'line')
 
-	yData.map(toCoords(xRatio, yRatio, DPI_HEIGHT, -5)).forEach((coords, idx) => {
+	console.log(DPI_HEIGHT)
+	yData.map(toCoords(xRatio, yRatio, DPI_HEIGHT, 0, yMin)).forEach((coords, idx) => {
 		const color = data.colors[yData[idx][0]]
 		line(ctx, coords, color)
 	})
 
 	return {
 		subscribe(fn) {
+			nextFn = fn
 			fn(getPosition())
 		}
 	}

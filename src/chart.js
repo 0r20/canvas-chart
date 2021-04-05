@@ -1,4 +1,14 @@
-import { isOver, toDate, circle, computeBoundaries, line, toCoords, css } from './utils'
+import {
+	isOver,
+	toDate,
+	circle,
+	computeBoundaries,
+	line,
+	toCoords,
+	css,
+	computeXRatio,
+	computeYRatio
+} from './utils'
 import { tooltip } from './tooltip'
 import { sliderChart } from './slider'
 
@@ -12,9 +22,9 @@ const VIEW_WIDTH = DPI_WIDTH
 const ROWS_COUNT = 5
 const COLS_COUNT = 6
 const CIRCLE_RADIUS = 8
+const ANIMATION_SPEED = 3000
 
 export function chart(root, data) {
-
 	const canvas = root.querySelector('[data-el="main"]')
 	const tip = tooltip(root.querySelector('[data-el="tooltip"]'))
 	const slider = sliderChart(root.querySelector('[data-el="slider"]'), data, DPI_WIDTH)
@@ -37,7 +47,7 @@ export function chart(root, data) {
 	})
 
 	slider.subscribe((pos) => {
-		console.log(pos)
+		proxy.pos = pos
 	})
 
 	canvas.addEventListener('mousemove', mousemove)
@@ -65,19 +75,32 @@ export function chart(root, data) {
 
 	function paint() {
 		clear()
-		const { min: yMin, max: yMax } = computeBoundaries(data)
-		const xMax = data.columns[0].length
 
-		const yRatio = VIEW_HEIGHT / (yMax - yMin)
-		const xRatio = VIEW_WIDTH / (xMax - 2)
+		const length = data.columns[0].length
+		const leftIndex = Math.round((length * proxy.pos[0]) / 100)
+		const rightIndex = Math.round((length * proxy.pos[1]) / 100)
 
-		const yData = data.columns.filter(col => data.types[col[0]] === 'line')
-		const xData = data.columns.filter(col => data.types[col[0]] !== 'line')[0].slice(1)
+		const columns = data.columns.map((col) => {
+			const res = col.slice(leftIndex, rightIndex)
+			if (typeof res[0] !== 'string') {
+				res.unshift(col[0])
+			}
+			return res
+		})
+
+		const { min: yMin, max: yMax } = computeBoundaries({ columns, types: data.types })
+		const xMax = columns[0].length
+
+		const yRatio = computeYRatio(VIEW_HEIGHT, yMax, yMin)
+		const xRatio = computeXRatio(VIEW_WIDTH, xMax)
+
+		const yData = columns.filter(col => data.types[col[0]] === 'line')
+		const xData = columns.filter(col => data.types[col[0]] !== 'line')[0].slice(1)
 
 		yAxis(yMin, yMax)
 		xAxis(xData, yData, xRatio, data)
 
-		yData.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING)).forEach((coords, idx) => {
+		yData.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING, yMin)).forEach((coords, idx) => {
 			const color = data.colors[yData[idx][0]]
 			line(ctx, coords, color)
 
@@ -128,8 +151,6 @@ export function chart(root, data) {
 				ctx.moveTo(x, PADDING / 2)
 				ctx.lineTo(x, DPI_HEIGHT - PADDING)
 				ctx.restore()
-
-
 
 				tip.show(proxy.mouse.tooltip, {
 					title: toDate(timestamp),

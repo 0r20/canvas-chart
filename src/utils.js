@@ -1,9 +1,9 @@
-export function toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING) {
+export function toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING, yMin) {
 	return (col) =>
 		col.slice(1).map((y, i) =>
 			[
 				Math.floor(i * xRatio),
-				Math.floor(DPI_HEIGHT - PADDING - y * yRatio)
+				Math.floor(DPI_HEIGHT - PADDING - (y - yMin) / yRatio)
 			])
 }
 
@@ -78,4 +78,12 @@ export function circle(ctx, [x, y], { color, radius }) {
 
 export function css(el, styles) {
 	return Object.assign(el.style, styles)
+}
+
+export function computeYRatio(height, max, min) {
+	return (max - min) / height
+}
+
+export function computeXRatio(width, max) {
+	return width / (max - 2)
 }
